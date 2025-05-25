@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+
 import { getPatients } from '../db/dbOperations';
 
 const PatientList = () => {
@@ -12,14 +14,64 @@ const PatientList = () => {
       setPatients(patientList);
       setError(null);
     } catch (error) {
-      console.error('error loading Patients:', error);
-      setError('failed to load Patients.Please try again later.');
+      console.error('Error loading patients:', error);
+      setError('Failed to load patients. Please try again later.');
     } finally {
       setIsLoading(false);
     }
   };
 
-     if (patients.length === 0) {
+  // Load patients on mount and set up BroadcastChannel for updates
+  useEffect(() => {
+    loadPatients();
+
+    // Create a BroadcastChannel for cross-tab communication
+    let channel;
+    try {
+      channel = new BroadcastChannel('patient-updates');
+      
+      // Listen for updates from other tabs
+      channel.onmessage = (event) => {
+        if (event.data.type === 'PATIENT_UPDATED') {
+          loadPatients();
+        }
+      };
+    } catch (error) {
+      console.warn('BroadcastChannel not supported in this browser. Cross-tab sync will be disabled.');
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          channel.close();
+        } catch (error) {
+          console.warn('Error closing BroadcastChannel:', error);
+        }
+      }
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+          <CircularProgress />
+        </Box>
+      </Paper>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography color="error" align="center">
+          {error}
+        </Typography>
+      </Paper>
+    );
+  }
+
+  if (patients.length === 0) {
     return (
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography align="center" color="text.secondary">
@@ -29,7 +81,7 @@ const PatientList = () => {
     );
   }
 
-    return (
+  return (
     <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
       <Typography variant="h5" gutterBottom>
         Registered Patients
@@ -64,8 +116,6 @@ const PatientList = () => {
       </TableContainer>
     </Paper>
   );
-
-
 };
 
 export default PatientList; 
