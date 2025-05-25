@@ -52,6 +52,19 @@ export const addPatient = async (patientData) => {
   }
 };
 
+export const getPatients = async () => {
+  const db = await dbInitPromise();
+  try {
+    const result = await db.query(
+      'SELECT * FROM patients ORDER BY created_at DESC'
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error getting patients:', error);
+    throw error;
+  }
+};
+
 
 
 
