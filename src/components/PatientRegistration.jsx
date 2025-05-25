@@ -25,6 +25,12 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   const [errors, setErrors] = useState({});
 
+  // Function to validate phone number
+  const isValidPhoneNumber = (number) => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(number);
+  };
+
   useEffect(() => {
     const initDb = async () => {
       try {
@@ -51,14 +57,11 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
     const newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = 'Required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Required';
-    
-    // Mobile number validation
     if (!formData.mobileNumber) {
       newErrors.mobileNumber = 'Required';
-    } else if (!/^\d{10}$/.test(formData.mobileNumber)) {
+    } else if (!isValidPhoneNumber(formData.mobileNumber)) {
       newErrors.mobileNumber = 'Must be exactly 10 digits';
     }
-
     if (!formData.address.trim()) newErrors.address = 'Required';
     if (!formData.age) newErrors.age = 'Required';
     if (formData.age && (formData.age < 0 || formData.age > 150)) {
@@ -68,11 +71,9 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
     if (!formData.emergencyContact.firstName.trim()) newErrors['emergencyContact.firstName'] = 'Required';
     if (!formData.emergencyContact.lastName.trim()) newErrors['emergencyContact.lastName'] = 'Required';
     if (!formData.emergencyContact.relationship.trim()) newErrors['emergencyContact.relationship'] = 'Required';
-    
-    // Emergency contact phone validation
     if (!formData.emergencyContact.phoneNumber) {
       newErrors['emergencyContact.phoneNumber'] = 'Required';
-    } else if (!/^\d{10}$/.test(formData.emergencyContact.phoneNumber)) {
+    } else if (!isValidPhoneNumber(formData.emergencyContact.phoneNumber)) {
       newErrors['emergencyContact.phoneNumber'] = 'Must be exactly 10 digits';
     }
 
@@ -83,23 +84,23 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Handle number-only input for phone numbers
+    // Handle phone number inputs
     if (name === 'mobileNumber' || name === 'emergency.phoneNumber') {
-      // Remove any non-digit characters and limit to 10 digits
-      const numbersOnly = value.replace(/\D/g, '').slice(0, 10);
+      // Only allow numbers and limit to 10 digits
+      const numericValue = value.replace(/[^0-9]/g, '').slice(0, 10);
       
       if (name === 'emergency.phoneNumber') {
         setFormData(prev => ({
           ...prev,
           emergencyContact: {
             ...prev.emergencyContact,
-            phoneNumber: numbersOnly
+            phoneNumber: numericValue
           }
         }));
       } else {
         setFormData(prev => ({
           ...prev,
-          [name]: numbersOnly
+          [name]: numericValue
         }));
       }
     } else if (name.startsWith('emergency.')) {
@@ -117,8 +118,15 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
         [name]: value
       }));
     }
-    
-    if (errors[name]) {
+
+    // Clear errors when field is being edited
+    if (name.includes('.')) {
+      const field = name.split('.')[1];
+      setErrors(prev => ({
+        ...prev,
+        [`emergencyContact.${field}`]: undefined
+      }));
+    } else {
       setErrors(prev => ({
         ...prev,
         [name]: undefined
@@ -235,16 +243,30 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
             <div>
               <label className="block text-sm font-medium mb-1">Mobile Number</label>
               <input
-                type="tel"
+                type="number"
                 name="mobileNumber"
                 value={formData.mobileNumber}
                 onChange={handleChange}
-                className={`${inputClass} ${errors.mobileNumber ? '!border-red-500 !ring-red-500' : ''}`}
+                onKeyDown={(e) => {
+                  // Prevent typing non-numeric characters
+                  if (!/[0-9]/.test(e.key) && 
+                      e.key !== 'Backspace' && 
+                      e.key !== 'Delete' && 
+                      e.key !== 'ArrowLeft' && 
+                      e.key !== 'ArrowRight' && 
+                      e.key !== 'Tab') {
+                    e.preventDefault();
+                  }
+                }}
+                className={`${inputClass} ${errors.mobileNumber ? '!border-red-500 !ring-red-500' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                 placeholder="10 digit number"
-                maxLength="10"
-                pattern="\d{10}"
+                min="0"
+                max="9999999999"
               />
               {errors.mobileNumber && <p className="mt-0.5 text-xs text-red-500">{errors.mobileNumber}</p>}
+              {!errors.mobileNumber && formData.mobileNumber && formData.mobileNumber.length < 10 && (
+                <p className="mt-0.5 text-xs text-yellow-500">{`Enter ${10 - formData.mobileNumber.length} more digits`}</p>
+              )}
             </div>
 
             <div>
@@ -363,17 +385,33 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
             <div>
               <label className="block text-sm font-medium mb-1">Phone Number</label>
               <input
-                type="tel"
+                type="number"
                 name="emergency.phoneNumber"
                 value={formData.emergencyContact.phoneNumber}
                 onChange={handleChange}
-                className={`${inputClass} ${errors['emergencyContact.phoneNumber'] ? '!border-red-500 !ring-red-500' : ''}`}
+                onKeyDown={(e) => {
+                  // Prevent typing non-numeric characters
+                  if (!/[0-9]/.test(e.key) && 
+                      e.key !== 'Backspace' && 
+                      e.key !== 'Delete' && 
+                      e.key !== 'ArrowLeft' && 
+                      e.key !== 'ArrowRight' && 
+                      e.key !== 'Tab') {
+                    e.preventDefault();
+                  }
+                }}
+                className={`${inputClass} ${errors['emergencyContact.phoneNumber'] ? '!border-red-500 !ring-red-500' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                 placeholder="10 digit number"
-                maxLength="10"
-                pattern="\d{10}"
+                min="0"
+                max="9999999999"
               />
               {errors['emergencyContact.phoneNumber'] && (
                 <p className="mt-0.5 text-xs text-red-500">{errors['emergencyContact.phoneNumber']}</p>
+              )}
+              {!errors['emergencyContact.phoneNumber'] && 
+                formData.emergencyContact.phoneNumber && 
+                formData.emergencyContact.phoneNumber.length < 10 && (
+                <p className="mt-0.5 text-xs text-yellow-500">{`Enter ${10 - formData.emergencyContact.phoneNumber.length} more digits`}</p>
               )}
             </div>
           </div>
