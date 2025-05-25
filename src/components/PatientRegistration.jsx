@@ -32,41 +32,48 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
         setDbReady(true);
       } catch (error) {
         console.error('Database initialization failed:', error);
-        setNotification({
-          show: true,
-          message: 'Failed to initialize database. Please refresh the page.',
-          type: 'error'
-        });
+        showNotification('Failed to initialize database. Please refresh the page.', 'error');
       }
     };
 
     initDb();
   }, []);
 
+  // Function to show notification and auto-hide after 2 seconds
+  const showNotification = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: '', type: 'success' });
+    }, 2000);
+  };
+
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.mobileNumber.trim()) newErrors.mobileNumber = 'Mobile number is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.age) newErrors.age = 'Age is required';
-    if (formData.age && (formData.age < 0 || formData.age > 150)) {
-      newErrors.age = 'Please enter a valid age between 0 and 150';
+    if (!formData.firstName.trim()) newErrors.firstName = 'Required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Required';
+    
+    // Mobile number validation
+    if (!formData.mobileNumber) {
+      newErrors.mobileNumber = 'Required';
+    } else if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = 'Must be exactly 10 digits';
     }
-    if (!formData.gender) newErrors.gender = 'Gender is required';
 
-    // Emergency contact validation
-    if (!formData.emergencyContact.firstName.trim()) {
-      newErrors['emergencyContact.firstName'] = 'Emergency contact first name is required';
+    if (!formData.address.trim()) newErrors.address = 'Required';
+    if (!formData.age) newErrors.age = 'Required';
+    if (formData.age && (formData.age < 0 || formData.age > 150)) {
+      newErrors.age = 'Invalid age';
     }
-    if (!formData.emergencyContact.lastName.trim()) {
-      newErrors['emergencyContact.lastName'] = 'Emergency contact last name is required';
-    }
-    if (!formData.emergencyContact.relationship.trim()) {
-      newErrors['emergencyContact.relationship'] = 'Relationship is required';
-    }
-    if (!formData.emergencyContact.phoneNumber.trim()) {
-      newErrors['emergencyContact.phoneNumber'] = 'Emergency contact phone number is required';
+    if (!formData.gender) newErrors.gender = 'Required';
+    if (!formData.emergencyContact.firstName.trim()) newErrors['emergencyContact.firstName'] = 'Required';
+    if (!formData.emergencyContact.lastName.trim()) newErrors['emergencyContact.lastName'] = 'Required';
+    if (!formData.emergencyContact.relationship.trim()) newErrors['emergencyContact.relationship'] = 'Required';
+    
+    // Emergency contact phone validation
+    if (!formData.emergencyContact.phoneNumber) {
+      newErrors['emergencyContact.phoneNumber'] = 'Required';
+    } else if (!/^\d{10}$/.test(formData.emergencyContact.phoneNumber)) {
+      newErrors['emergencyContact.phoneNumber'] = 'Must be exactly 10 digits';
     }
 
     setErrors(newErrors);
@@ -75,7 +82,27 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name.startsWith('emergency.')) {
+    
+    // Handle number-only input for phone numbers
+    if (name === 'mobileNumber' || name === 'emergency.phoneNumber') {
+      // Remove any non-digit characters and limit to 10 digits
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 10);
+      
+      if (name === 'emergency.phoneNumber') {
+        setFormData(prev => ({
+          ...prev,
+          emergencyContact: {
+            ...prev.emergencyContact,
+            phoneNumber: numbersOnly
+          }
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: numbersOnly
+        }));
+      }
+    } else if (name.startsWith('emergency.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({
         ...prev,
@@ -90,6 +117,7 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
         [name]: value
       }));
     }
+    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -108,11 +136,7 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
         ...formData,
         fullName: `${formData.firstName} ${formData.lastName}`
       });
-      setNotification({
-        show: true,
-        message: 'Patient registered successfully!',
-        type: 'success'
-      });
+      showNotification('Patient registered successfully!');
       setFormData({
         firstName: '',
         lastName: '',
@@ -130,11 +154,7 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
       });
       if (onPatientAdded) onPatientAdded(newPatient);
     } catch (error) {
-      setNotification({
-        show: true,
-        message: 'Error registering patient: ' + error.message,
-        type: 'error'
-      });
+      showNotification('Error registering patient: ' + error.message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -142,38 +162,50 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
 
   if (!dbReady) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
+      <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-twitter-blue border-t-transparent"></div>
       </div>
     );
   }
 
-  const inputClass = `w-full px-3 py-2 rounded-lg border text-sm transition-all duration-200 ${
+  const inputClass = `w-full px-2 py-1.5 rounded-lg border text-sm transition-all duration-200 ${
     darkMode 
       ? 'bg-gray-800 border-gray-700 focus:border-twitter-blue' 
       : 'bg-white border-gray-200 focus:border-twitter-blue'
   } focus:outline-none focus:ring-1 focus:ring-twitter-blue`;
 
   return (
-    <div className={`max-w-4xl mx-auto rounded-xl ${darkMode ? 'bg-gray-900' : 'bg-white'} shadow-lg`}>
-      <div className="p-6 border-b border-gray-700">
-        <h2 className="text-xl font-semibold">Patient Registration</h2>
-        <p className={`mt-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          Enter patient details and emergency contact information
-        </p>
-      </div>
+    <>
+      {/* Centered Notification */}
+      {notification.show && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className={`px-6 py-3 rounded-lg shadow-lg ${
+            notification.type === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          } transform transition-all duration-300 ease-in-out`}>
+            {notification.message}
+          </div>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {/* Personal Information Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-6 bg-twitter-blue rounded-full"></div>
-            <h3 className="text-lg font-medium">Personal Information</h3>
+      <div className={`max-w-6xl mx-auto rounded-xl ${darkMode ? 'bg-gray-900' : 'bg-white'} shadow-lg h-screen overflow-hidden`}>
+        <div className="p-4 border-b border-gray-700">
+          <h2 className="text-xl font-semibold">Patient Registration</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 h-[calc(100vh-80px)] overflow-y-auto">
+          {/* Personal Information Section */}
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-6 bg-twitter-blue rounded-full"></div>
+              <h3 className="text-lg font-medium">Personal Information</h3>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium mb-1.5">First Name</label>
+              <label className="block text-sm font-medium mb-1">First Name</label>
               <input
                 type="text"
                 name="firstName"
@@ -182,24 +214,11 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
                 className={`${inputClass} ${errors.firstName ? '!border-red-500 !ring-red-500' : ''}`}
                 placeholder="John"
               />
-              {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
+              {errors.firstName && <p className="mt-0.5 text-xs text-red-500">{errors.firstName}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={`${inputClass} ${errors.lastName ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="Doe"
-              />
-              {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Age</label>
+              <label className="block text-sm font-medium mb-1">Age</label>
               <input
                 type="number"
                 name="age"
@@ -210,11 +229,54 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
                 className={`${inputClass} ${errors.age ? '!border-red-500 !ring-red-500' : ''}`}
                 placeholder="25"
               />
-              {errors.age && <p className="mt-1 text-sm text-red-500">{errors.age}</p>}
+              {errors.age && <p className="mt-0.5 text-xs text-red-500">{errors.age}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Gender</label>
+              <label className="block text-sm font-medium mb-1">Mobile Number</label>
+              <input
+                type="tel"
+                name="mobileNumber"
+                value={formData.mobileNumber}
+                onChange={handleChange}
+                className={`${inputClass} ${errors.mobileNumber ? '!border-red-500 !ring-red-500' : ''}`}
+                placeholder="10 digit number"
+                maxLength="10"
+                pattern="\d{10}"
+              />
+              {errors.mobileNumber && <p className="mt-0.5 text-xs text-red-500">{errors.mobileNumber}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                rows="2"
+                className={`${inputClass} ${errors.address ? '!border-red-500 !ring-red-500' : ''}`}
+                placeholder="Enter address"
+              />
+              {errors.address && <p className="mt-0.5 text-xs text-red-500">{errors.address}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                className={`${inputClass} ${errors.lastName ? '!border-red-500 !ring-red-500' : ''}`}
+                placeholder="Doe"
+              />
+              {errors.lastName && <p className="mt-0.5 text-xs text-red-500">{errors.lastName}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Gender</label>
               <select
                 name="gender"
                 value={formData.gender}
@@ -226,153 +288,117 @@ const PatientRegistration = ({ onPatientAdded, darkMode }) => {
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
-              {errors.gender && <p className="mt-1 text-sm text-red-500">{errors.gender}</p>}
+              {errors.gender && <p className="mt-0.5 text-xs text-red-500">{errors.gender}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Mobile Number</label>
-              <input
-                type="tel"
-                name="mobileNumber"
-                value={formData.mobileNumber}
+              <label className="block text-sm font-medium mb-1">Medical History</label>
+              <textarea
+                name="medicalHistory"
+                value={formData.medicalHistory}
                 onChange={handleChange}
-                className={`${inputClass} ${errors.mobileNumber ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="+1 (555) 000-0000"
+                rows="2"
+                className={inputClass}
+                placeholder="Enter medical history (optional)"
               />
-              {errors.mobileNumber && <p className="mt-1 text-sm text-red-500">{errors.mobileNumber}</p>}
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Address</label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              rows="2"
-              className={`${inputClass} resize-none ${errors.address ? '!border-red-500 !ring-red-500' : ''}`}
-              placeholder="Enter full address"
-            />
-            {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
+          {/* Emergency Contact Section */}
+          <div className="md:col-span-2 mt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-6 bg-twitter-blue rounded-full"></div>
+              <h3 className="text-lg font-medium">Emergency Contact</h3>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Medical History</label>
-            <textarea
-              name="medicalHistory"
-              value={formData.medicalHistory}
-              onChange={handleChange}
-              rows="2"
-              className={`${inputClass} resize-none`}
-              placeholder="Any relevant medical history (optional)"
-            />
-          </div>
-        </div>
-
-        {/* Emergency Contact Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-6 bg-red-500 rounded-full"></div>
-            <h3 className="text-lg font-medium">Emergency Contact</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium mb-1.5">First Name</label>
+              <label className="block text-sm font-medium mb-1">First Name</label>
               <input
                 type="text"
                 name="emergency.firstName"
                 value={formData.emergencyContact.firstName}
                 onChange={handleChange}
                 className={`${inputClass} ${errors['emergencyContact.firstName'] ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="Emergency contact's first name"
+                placeholder="Emergency contact first name"
               />
               {errors['emergencyContact.firstName'] && (
-                <p className="mt-1 text-sm text-red-500">{errors['emergencyContact.firstName']}</p>
+                <p className="mt-0.5 text-xs text-red-500">{errors['emergencyContact.firstName']}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Last Name</label>
-              <input
-                type="text"
-                name="emergency.lastName"
-                value={formData.emergencyContact.lastName}
-                onChange={handleChange}
-                className={`${inputClass} ${errors['emergencyContact.lastName'] ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="Emergency contact's last name"
-              />
-              {errors['emergencyContact.lastName'] && (
-                <p className="mt-1 text-sm text-red-500">{errors['emergencyContact.lastName']}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Relationship</label>
+              <label className="block text-sm font-medium mb-1">Relationship</label>
               <input
                 type="text"
                 name="emergency.relationship"
                 value={formData.emergencyContact.relationship}
                 onChange={handleChange}
                 className={`${inputClass} ${errors['emergencyContact.relationship'] ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="e.g., Spouse, Parent, Sibling"
+                placeholder="Relationship to patient"
               />
               {errors['emergencyContact.relationship'] && (
-                <p className="mt-1 text-sm text-red-500">{errors['emergencyContact.relationship']}</p>
+                <p className="mt-0.5 text-xs text-red-500">{errors['emergencyContact.relationship']}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name</label>
+              <input
+                type="text"
+                name="emergency.lastName"
+                value={formData.emergencyContact.lastName}
+                onChange={handleChange}
+                className={`${inputClass} ${errors['emergencyContact.lastName'] ? '!border-red-500 !ring-red-500' : ''}`}
+                placeholder="Emergency contact last name"
+              />
+              {errors['emergencyContact.lastName'] && (
+                <p className="mt-0.5 text-xs text-red-500">{errors['emergencyContact.lastName']}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Phone Number</label>
+              <label className="block text-sm font-medium mb-1">Phone Number</label>
               <input
                 type="tel"
                 name="emergency.phoneNumber"
                 value={formData.emergencyContact.phoneNumber}
                 onChange={handleChange}
                 className={`${inputClass} ${errors['emergencyContact.phoneNumber'] ? '!border-red-500 !ring-red-500' : ''}`}
-                placeholder="+1 (555) 000-0000"
+                placeholder="10 digit number"
+                maxLength="10"
+                pattern="\d{10}"
               />
               {errors['emergencyContact.phoneNumber'] && (
-                <p className="mt-1 text-sm text-red-500">{errors['emergencyContact.phoneNumber']}</p>
+                <p className="mt-0.5 text-xs text-red-500">{errors['emergencyContact.phoneNumber']}</p>
               )}
             </div>
           </div>
-        </div>
 
-        <div className="pt-4 border-t border-gray-700">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-2.5 px-4 rounded-lg font-medium text-white transition-all duration-200 ${
-              isLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-twitter-blue hover:bg-blue-500 active:bg-blue-600 focus:ring-2 focus:ring-offset-2 focus:ring-twitter-blue'
-            }`}
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                <span>Registering...</span>
-              </div>
-            ) : (
-              'Register Patient'
-            )}
-          </button>
-        </div>
-      </form>
-
-      {notification.show && (
-        <div
-          className={`mx-6 mb-6 p-4 rounded-lg ${
-            notification.type === 'success'
-              ? 'bg-green-100 text-green-700 border border-green-200'
-              : 'bg-red-100 text-red-700 border border-red-200'
-          }`}
-        >
-          {notification.message}
-        </div>
-      )}
-    </div>
+          <div className="md:col-span-2 flex justify-end mt-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`px-6 py-2 bg-twitter-blue text-white rounded-lg font-medium 
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'} 
+                transition-colors duration-200`}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Registering...
+                </span>
+              ) : (
+                'Register Patient'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 };
 
