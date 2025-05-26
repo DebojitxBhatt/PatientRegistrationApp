@@ -2,7 +2,10 @@
 
 A frontend-only patient registration application built with React and PGlite for data storage. This application allows for patient registration, SQL querying, and maintains data persistence across page refreshes and multiple tabs.
 
+Project is Live on Netlify : https://patient-registrationapp20.netlify.app/
+
 ## Quick Start Guide
+
 
 ### Prerequisites
 - Node.js (v14 or higher)
