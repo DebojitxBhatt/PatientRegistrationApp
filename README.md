@@ -203,12 +203,15 @@ A frontend-only patient registration application built with React and PGlite for
 
 *First time using PGlite, I have used Postgresql pgadmin, MongoDB, there was a learning curve to connect the database https://pglite.dev/docs/ was not enough and even on internet there are very few content on how to use PGlite, I had diffuclty connecting with patientRegform
 
-*lot of errors in Tailwind css UI was not even working, I had to switch to material ui but these video saved me
+*lot of errors in Tailwind css UI was not even working, I had to switch to material ui but this video saved me
 link: https://www.youtube.com/watch?v=227LunUUt-E
 
 *I had tough time deciding  what fields to keep or not to like: blood group ? does it matter? I don't know, to build Patient schema.
 
+*setting up BroadcastChannel API is a built-in web API that allows simple communication between different browser contexts (tabs, windows, iframes) of the same origin.
+It was't working in first.
 
+*Deciding to use old twitter theme for dark mode
 
 
 
