@@ -14,4 +14,5 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     }
   },
+  assetsInclude: ['**/*.wasm'] 
 })
